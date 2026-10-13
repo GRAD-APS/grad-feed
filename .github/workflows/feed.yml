@@ -1,0 +1,77 @@
+name: Shopping feed
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # every 6 hours, at :17 to stay off the top-of-hour rush
+  workflow_dispatch:          # "Run workflow" = run now
+    inputs:
+      check_links:
+        description: Open one landing page per feed and compare domain, currency and price
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths: [config.toml, feed.py, .github/workflows/feed.yml]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: write   # keepalive below
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.feed.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest -v
+      - id: feed
+        name: Build feeds
+        run: |
+          set +e
+          python feed.py --out site ${{ (github.event_name == 'workflow_dispatch' && inputs.check_links) && '--check-links' || '' }}
+          code=$?
+          cat site/report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$code" >> "$GITHUB_OUTPUT"
+          # 1 = nothing written: stop here so the last good feeds stay live.
+          [ "$code" -ne 1 ]
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      # GitHub disables schedules in public repos after 60 days without a
+      # commit; re-enabling on every run resets that clock.
+      - name: Keep the schedule alive
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable feed.yml --repo "$GITHUB_REPOSITORY"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4
+
+  verdict:
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail the run if items were left out or a landing page disagreed
+        if: needs.build.outputs.status != '0'
+        run: |
+          echo "::error::Feeds were published, but the report lists errors. Open the run summary."
+          exit 1

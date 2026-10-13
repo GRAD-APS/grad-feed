@@ -1,0 +1,177 @@
+# GRAD Google Shopping feed: the one file to edit.
+#
+# Every run reads the active products from the Shopify Storefront API in each
+# country's context (translated title and description, that country's price
+# and currency), then writes one XML file per feed label + language. In
+# Merchant Center terms each file is one data source. Edit, commit, push, and
+# the next run picks it up.
+
+shop = "grad-dk.myshopify.com"
+api_version = "2026-07"
+
+# TEST MODE: offer IDs and feed labels get a TEST_ prefix, and every item is
+# excluded from every destination, so nothing can show anywhere. Feed labels
+# max out at 20 characters, so a test label is TEST_ plus the label without its
+# currency (EUR_62471242066 becomes TEST_62471242066).
+test_mode = true
+
+# Every product link uses this domain and never a country domain: Merchant
+# Center can claim only one website.
+base_url = "https://grad.dk"
+
+# Where the feeds are published, for links in the run report.
+pages_url = "https://grad-aps.github.io/grad-feed"
+
+brand = "GRAD"
+condition = "new"
+# 4539 = Home & Garden > Kitchen & Dining > Kitchen Appliances > Wine Fridges
+google_product_category = 4539
+
+# Same offer IDs as the Shopify Google & YouTube app, so history carries over.
+offer_id_format = "shopify_ZZ_{product_id}_{variant_id}"
+
+# Lifestyle shots after the packshot. Set to 0 to send the packshot only.
+max_additional_images = 10
+
+# Paused in Merchant Center when the app was replaced, kept paused for parity.
+# Format: "<feed label>/<language>/<offer id>", without any TEST_ prefix.
+paused = [
+  "EUR_101524046162/en/shopify_ZZ_9687828398418_49451894014290",
+  "USD_92753658194/en/shopify_ZZ_9687828398418_49451894014290",
+  "EUR_370737387/en/shopify_ZZ_9687828398418_49451894014290",
+]
+
+# Link rules. A country's `link` is one of these names or a full pattern.
+#   {folder}   language folder: /da /de /es /fr /it /nl /pt /sv, nothing for English
+#   {handle}   the product handle in that language
+#   {variant}  variant ID
+#   {country}  the country (the first one listed, when several share a feed)
+[link_styles]
+# Euro countries: no ?country=, so the page shows the standard EUR price.
+folder = "{base_url}{folder}/products/{handle}?variant={variant}"
+# Countries that stay on the main domain with their own prices.
+country = "{base_url}{folder}/products/{handle}?variant={variant}&country={country}"
+
+# Merchant Center flags GRAD as alcohol. A description sentence containing a
+# match is dropped, and a title containing one leaves the item out of the feed.
+# Patterns are case-insensitive regular expressions matched against whole
+# words. "all" applies to every language. "allow" lists word beginnings that
+# only look like a match (Danish "vindue" is a window).
+[alcohol]
+all = [
+  'wine\w*', 'champagne\w*', 'prosecco', 'cava', 'crémant', 'spumante', 'sekt', 'brut',
+  'rosé\w*', 'riesling', 'chardonnay', 'sauvignon', 'pinot', 'merlot', 'cabernet',
+  'syrah', 'shiraz', 'chablis', 'bordeaux', 'bourgogne', 'burgund\w*', 'barolo',
+  'chianti', 'rioja', 'sommeli\w*', 'alcohol\w*', 'alcool\w*', 'álcool\w*',
+  'alcol\w*', 'alkohol\w*', 'vintner\w*',
+]
+de = ['\w*wein\w*', 'winzer\w*']
+nl = ['\w*wijn\w*']
+fr = ['vins?', 'vinicole\w*', 'vigner\w*', 'œnolog\w*', 'oenolog\w*']
+it = ['vin[oi]', 'vinicol\w*', 'enolog\w*']
+es = ['vinos?', 'vin[ií]col\w*', 'en[oó]log\w*', 'bodega\w*']
+pt = ['vinhos?', 'vin[ií]col\w*', 'en[oó]log\w*']
+da = ['\w*vin\w*']
+sv = ['\w*vin\w*']
+allow = ['vind', 'vint', 'vinge', 'vinkel', 'vinkl', 'vinyl', 'vinst', 'vinn', 'provins', 'svin', 'divin']
+
+# One line per country GRAD advertises in.
+#
+#   languages   Merchant Center content languages, one data source each
+#   currency    must match what Shopify charges in that country, or the run
+#               stops before publishing. To switch CH or SE to EUR, change the
+#               Shopify market first, then this value. Keep the feed label as it
+#               is, because campaigns filter on it.
+#   feed_label  as the Google & YouTube app used them. Countries sharing a label
+#               share one file per language and must share one link rule.
+#   link        see [link_styles]
+#   shipping    from Settings > Shipping and delivery > General profile.
+#               Every product is over €50, so the free tier applies wherever
+#               there is one. Amount in shipping_currency (default EUR),
+#               converted at Shopify's rate when the country pays in another
+#               currency. Leave it out to use Merchant Center's account settings.
+#
+# Not listed: the UK (out of Google Shopping for now), and countries that no
+# Shopify shipping zone covers (AO AR BR BY CI CL CM CO CR DO DZ EC EG ET GH GT
+# KE MA MG MX MZ NG NI PA PE PY RU SN SV TN TZ UG UY VE ZM ZW).
+[countries]
+# --- Euro countries: language folder, no ?country=, standard EUR price -------
+DK = { languages = ["da", "en"], currency = "EUR", feed_label = "EUR_101523849554", link = "folder", shipping = 0 }
+DE = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder", shipping = 0 }
+AT = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder", shipping = 0 }
+IT = { languages = ["it", "en"], currency = "EUR", feed_label = "EUR_104670429522", link = "folder", shipping = 0 }
+
+# Europa label: the one the EU Performance Max campaign filters on.
+FR = { languages = ["fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+NL = { languages = ["nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+ES = { languages = ["es", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+PT = { languages = ["pt", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+LU = { languages = ["de", "fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+BE = { languages = ["fr", "nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+LI = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+BG = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+CY = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
+CZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+EE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+FI = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+GE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
+GR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 89 }
+HR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+HU = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+IE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+LT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+LV = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+MT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 89 }
+NO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+PL = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+RO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+SK = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+TR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
+UA = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+
+# --- Own subfolder and currency ----------------------------------------------
+CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "{base_url}/en-ch/products/{handle}?variant={variant}", shipping = 0 }
+US = { languages = ["en"], currency = "USD", feed_label = "USD_92753658194", link = "{base_url}/en-us/products/{handle}?variant={variant}", shipping = 39, shipping_currency = "USD" }
+
+# Launch: link = "{base_url}/en-se/products/{handle}?variant={variant}"
+SE = { languages = ["en"], currency = "SEK", feed_label = "SEK_119513022802", link = "country", shipping = 0 }
+# Launch: link = "{base_url}/en-ca/products/{handle}?variant={variant}"
+CA = { languages = ["en"], currency = "CAD", feed_label = "CAD_113515200850", link = "country", shipping = 39 }
+
+# --- Main domain with ?country= : Japan, Oceania, Asia, International --------
+JP = { languages = ["en"], currency = "EUR", feed_label = "EUR_115746111826", link = "country", shipping = 39 }
+AU = { languages = ["en"], currency = "EUR", feed_label = "AU", link = "country", shipping = 69 }
+NZ = { languages = ["en"], currency = "EUR", feed_label = "NZ", link = "country", shipping = 69 }
+
+# Gulf (ASIA market)
+AE = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+SA = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+KW = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+OM = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+BH = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+
+# Asia (ASIA market), one label per country as the app had them
+HK = { languages = ["en"], currency = "EUR", feed_label = "HK", link = "country", shipping = 39 }
+ID = { languages = ["en"], currency = "EUR", feed_label = "ID", link = "country", shipping = 39 }
+IN = { languages = ["en"], currency = "EUR", feed_label = "IN", link = "country", shipping = 39 }
+KH = { languages = ["en"], currency = "EUR", feed_label = "KH", link = "country", shipping = 39 }
+LK = { languages = ["en"], currency = "EUR", feed_label = "LK", link = "country", shipping = 39 }
+MY = { languages = ["en"], currency = "EUR", feed_label = "MY", link = "country", shipping = 39 }
+PH = { languages = ["en"], currency = "EUR", feed_label = "PH", link = "country", shipping = 39 }
+SG = { languages = ["en"], currency = "EUR", feed_label = "SG", link = "country", shipping = 39 }
+TH = { languages = ["en"], currency = "EUR", feed_label = "TH", link = "country", shipping = 39 }
+TW = { languages = ["en"], currency = "EUR", feed_label = "TW", link = "country", shipping = 39 }
+VN = { languages = ["en"], currency = "EUR", feed_label = "VN", link = "country", shipping = 39 }
+
+# International market
+ZA = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+IL = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+LB = { languages = ["en", "fr"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+BD = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+JO = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+KZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+MM = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+MU = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+NP = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+PK = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+UZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
