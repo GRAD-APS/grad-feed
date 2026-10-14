@@ -118,6 +118,12 @@ class LinkTest(unittest.TestCase):
         self.assertEqual(self.link(CFG, "SE", "en"), f"{self.BASE}{self.PATH}&country=SE")
         self.assertTrue(self.link(CFG, "JP", "en").endswith("&country=JP"))
 
+    def test_folder_countries_use_the_base_domain_context(self):
+        self.assertEqual(feed.context_country(CFG, "DK"), "BM")
+        self.assertEqual(feed.context_country(CFG, "FR"), "BM")
+        self.assertEqual(feed.context_country(CFG, "SE"), "SE")
+        self.assertEqual(feed.context_country(CFG, "US"), "US")
+
     def test_live_config(self):
         self.assertEqual(self.BASE, "https://gradnordic.com")
         self.assertFalse(CFG["test_mode"])

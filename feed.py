@@ -119,6 +119,17 @@ def link_pattern(cfg, cc):
     return cfg.get("link_styles", {}).get(link, link)
 
 
+def context_country(cfg, cc):
+    """The country whose Shopify context a country's landing page shows.
+
+    A "folder" link carries no ?country=, so the page opens in the base domain's
+    default market (standard_country), whatever market the country itself is in.
+    """
+    if cfg["countries"][cc]["link"] == "folder" and cfg.get("standard_country"):
+        return cfg["standard_country"]
+    return cc
+
+
 def feed_label(cfg, label):
     """The label the Merchant Center data source carries (TEST_ in test mode)."""
     if cfg.get("test_mode"):
@@ -304,29 +315,37 @@ class Run:
             self.warnings.append(msg)
 
     def fetch_all(self):
-        pairs = [(cc, lang) for cc, c in self.cfg["countries"].items() for lang in c["languages"]]
+        # One request per Shopify context + language; folder countries share one context.
+        uses = defaultdict(list)
+        for cc, c in self.cfg["countries"].items():
+            for lang in c["languages"]:
+                uses[(context_country(self.cfg, cc), lang)].append(cc)
         with cf.ThreadPoolExecutor(max_workers=6) as pool:
-            jobs = {pool.submit(fetch, self.cfg, cc, lang): (cc, lang) for cc, lang in pairs}
+            jobs = {pool.submit(fetch, self.cfg, ctx, lang): (ctx, lang) for ctx, lang in uses}
             for job in cf.as_completed(jobs):
-                cc, lang = jobs[job]
+                ctx, lang = jobs[job]
                 loc, products = job.result()
-                self.check_context(cc, lang, loc, products)
-                self.data[(cc, lang)] = records(self.cfg, self.filt, lang, products)
+                self.check_context(ctx, lang, loc, products, uses[(ctx, lang)])
+                recs = records(self.cfg, self.filt, lang, products)
+                for cc in uses[(ctx, lang)]:
+                    self.data[(cc, lang)] = recs
         if not any(self.data.values()):
             raise Fatal("Shopify returned no products at all")
 
-    def check_context(self, cc, lang, loc, products):
+    def check_context(self, ctx, lang, loc, products, countries):
         want_lang = SHOPIFY_LANG.get(lang, lang.upper())
-        currency = self.cfg["countries"][cc]["currency"]
-        if loc["country"]["isoCode"] != cc:
-            raise Fatal(f"{cc}: Shopify answered as {loc['country']['isoCode']}; is {cc} in a market?")
+        if loc["country"]["isoCode"] != ctx:
+            raise Fatal(f"{ctx}: Shopify answered as {loc['country']['isoCode']}; is {ctx} in a market?")
         if loc["language"]["isoCode"] != want_lang:
-            raise Fatal(f"{cc}/{lang}: Shopify does not publish {lang} for {cc} "
+            raise Fatal(f"{ctx}/{lang}: Shopify does not publish {lang} for {ctx} "
                         f"(it served {loc['language']['isoCode']}); remove it from config")
-        if loc["country"]["currency"]["isoCode"] != currency:
-            raise Fatal(f"{cc}: config says {currency}, Shopify sells in "
-                        f"{loc['country']['currency']['isoCode']}. Change the Shopify market "
-                        f"or the currency in config.toml so they agree")
+        sells = loc["country"]["currency"]["isoCode"]
+        for cc in countries:
+            currency = self.cfg["countries"][cc]["currency"]
+            if sells != currency:
+                where = cc if ctx == cc else f"{cc} (landing page context {ctx})"
+                raise Fatal(f"{where}: config says {currency}, Shopify sells in {sells}. Change the "
+                            f"Shopify market or the currency in config.toml so they agree")
         for p in products:
             if not p["onlineStoreUrl"]:
                 self.warn(f"'{p['title']}' is not on the Online Store, so it has no page to link to; left out")

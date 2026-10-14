@@ -19,6 +19,12 @@ test_mode = false
 # Center can claim only one website.
 base_url = "https://gradnordic.com"
 
+# A "folder" link (no ?country=) opens base_url in its default market, the
+# International market, which Shopify reports as Bermuda (BM). Every folder
+# country is priced and translated in that context, because that is the page
+# Google lands on. Checked 14 Oct 2026, after the country domains went live.
+standard_country = "BM"
+
 # Where the feeds are published, for links in the run report.
 pages_url = "https://grad-aps.github.io/grad-feed"
 
@@ -113,6 +119,9 @@ allow = ['vind', 'vint', 'vinge', 'vinkel', 'vinkl', 'vinyl', 'vinst', 'vinn', '
 # KE MA MG MX MZ NG NI PA PE PY RU SN SV TN TZ UG UY VE ZM ZW).
 [countries]
 # --- Euro countries: language folder, no ?country=, standard EUR price -------
+# Denmark: Shopify sells DK in DKK on gradnordic.dk since 14 Oct, but the
+# Merchant Center account claims gradnordic.com only, so Google gets the
+# gradnordic.com euro page (decided 14 Oct).
 DK = { languages = ["da", "en"], currency = "EUR", feed_label = "EUR_101523849554", link = "folder" }
 DE = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder" }
 AT = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder" }
