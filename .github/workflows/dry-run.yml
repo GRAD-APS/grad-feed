@@ -1,0 +1,29 @@
+name: Feed dry run
+
+# Builds the feeds from a branch and checks one landing page per feed, without
+# publishing anything. Use it to try a config change before it goes to main:
+# push to a branch named dry-run/<anything>, or run it by hand. The live feeds
+# only come from the "Shopping feed" workflow on main.
+
+on:
+  push:
+    branches: ["dry-run/**"]
+  workflow_dispatch:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest -v
+      - name: Build and check links (not published)
+        run: |
+          set +e
+          python feed.py --out site --check-links
+          code=$?
+          cat site/report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $code
