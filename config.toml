@@ -52,6 +52,25 @@ folder = "{base_url}{folder}/products/{handle}?variant={variant}"
 # Countries that stay on the main domain with their own prices.
 country = "{base_url}{folder}/products/{handle}?variant={variant}&country={country}"
 
+# Shipping: Shopify's General profile, zone by zone, as in Settings > Shipping
+# and delivery (read 14 Oct 2026). Each country ships at the rate of the zone
+# that contains it, and the run stops if a country is in no zone or in two.
+# Every product costs more than €50, so a zone whose rate drops to free above
+# €50 is 0 here. The rate is in `currency` (default EUR) and is converted at
+# Shopify's exchange rate when the country pays in another currency. When a
+# rate or zone changes in Shopify, change it here.
+[shipping_zones]
+Danmark = { rate = 0, countries = ["DK"] }
+Sweden = { rate = 0, countries = ["SE"] }
+Europe = { rate = 0, countries = ["AL", "AD", "AM", "AT", "BE", "BA", "BG", "HR", "CZ", "EE", "FO", "FI", "FR", "DE", "HU", "IE", "IT", "JE", "XK", "LV", "LI", "LT", "LU", "MD", "MC", "ME", "NL", "MK", "NO", "PL", "PT", "RO", "RS", "SK", "SI", "ES", "UA", "CH"] }
+"Greece/Malta" = { rate = 89, countries = ["GR", "MT"] }
+International = { rate = 39, countries = ["ZA", "TR", "CA", "MU", "CY"] }
+Japan = { rate = 140, countries = ["JP"] }
+Oceania = { rate = 69, countries = ["AU", "FJ", "NZ"] }
+USA = { rate = 39, currency = "USD", countries = ["US"] }
+"United Kingdom" = { rate = 0, countries = ["GB"] }
+Asia = { rate = 39, countries = ["AF", "AZ", "BD", "BT", "BN", "KH", "CN", "GE", "HK", "IN", "ID", "IQ", "IL", "JO", "KZ", "KG", "LA", "MO", "MY", "MV", "MN", "MM", "NP", "PK", "PS", "PH", "SG", "KR", "LK", "TW", "TJ", "TH", "TL", "TM", "UZ", "VN", "YE", "BH", "KW", "LB", "OM", "QA", "SA", "AE"] }
+
 # Merchant Center flags GRAD as alcohol. A description sentence containing a
 # match is dropped, and a title containing one leaves the item out of the feed.
 # Patterns are case-insensitive regular expressions matched against whole
@@ -85,93 +104,91 @@ allow = ['vind', 'vint', 'vinge', 'vinkel', 'vinkl', 'vinyl', 'vinst', 'vinn', '
 #   feed_label  as the Google & YouTube app used them. Countries sharing a label
 #               share one file per language and must share one link rule.
 #   link        see [link_styles]
-#   shipping    from Settings > Shipping and delivery > General profile.
-#               Every product is over €50, so the free tier applies wherever
-#               there is one. Amount in shipping_currency (default EUR),
-#               converted at Shopify's rate when the country pays in another
-#               currency. Leave it out to use Merchant Center's account settings.
+#
+# Shipping is not set here: each country takes the rate of the zone in
+# [shipping_zones] that contains it.
 #
 # Not listed: the UK (out of Google Shopping for now), and countries that no
 # Shopify shipping zone covers (AO AR BR BY CI CL CM CO CR DO DZ EC EG ET GH GT
 # KE MA MG MX MZ NG NI PA PE PY RU SN SV TN TZ UG UY VE ZM ZW).
 [countries]
 # --- Euro countries: language folder, no ?country=, standard EUR price -------
-DK = { languages = ["da", "en"], currency = "EUR", feed_label = "EUR_101523849554", link = "folder", shipping = 0 }
-DE = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder", shipping = 0 }
-AT = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder", shipping = 0 }
-IT = { languages = ["it", "en"], currency = "EUR", feed_label = "EUR_104670429522", link = "folder", shipping = 0 }
+DK = { languages = ["da", "en"], currency = "EUR", feed_label = "EUR_101523849554", link = "folder" }
+DE = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder" }
+AT = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_101524046162", link = "folder" }
+IT = { languages = ["it", "en"], currency = "EUR", feed_label = "EUR_104670429522", link = "folder" }
 
 # Europa label: the one the EU Performance Max campaign filters on.
-FR = { languages = ["fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-NL = { languages = ["nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-ES = { languages = ["es", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-PT = { languages = ["pt", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-LU = { languages = ["de", "fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-BE = { languages = ["fr", "nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-LI = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-BG = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-CY = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
-CZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-EE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-FI = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-GE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
-GR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 89 }
-HR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-HU = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-IE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-LT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-LV = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-MT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 89 }
-NO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-PL = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-RO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-SK = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
-TR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
-UA = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
+FR = { languages = ["fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+NL = { languages = ["nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+ES = { languages = ["es", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+PT = { languages = ["pt", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+LU = { languages = ["de", "fr", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+BE = { languages = ["fr", "nl", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+LI = { languages = ["de", "en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+BG = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+CY = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+CZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+EE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+FI = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+GE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+GR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+HR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+HU = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+IE = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+LT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+LV = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+MT = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+NO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+PL = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+RO = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+SK = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+TR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
+UA = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder" }
 
 # --- Own currency --------------------------------------------------------------
-US = { languages = ["en"], currency = "USD", feed_label = "USD_92753658194", link = "{base_url}/en-us/products/{handle}?variant={variant}", shipping = 39, shipping_currency = "USD" }
+US = { languages = ["en"], currency = "USD", feed_label = "USD_92753658194", link = "{base_url}/en-us/products/{handle}?variant={variant}" }
 # Main domain with ?country=CH, not /en-ch/
-CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "country", shipping = 0 }
+CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "country" }
 # Main domain with ?country=SE, not /en-se/
-SE = { languages = ["en"], currency = "SEK", feed_label = "SEK_119513022802", link = "country", shipping = 0 }
+SE = { languages = ["en"], currency = "SEK", feed_label = "SEK_119513022802", link = "country" }
 # Before launch: link = "country"
-CA = { languages = ["en"], currency = "CAD", feed_label = "CAD_113515200850", link = "{base_url}/en-ca/products/{handle}?variant={variant}", shipping = 39 }
+CA = { languages = ["en"], currency = "CAD", feed_label = "CAD_113515200850", link = "{base_url}/en-ca/products/{handle}?variant={variant}" }
 
 # --- Main domain with ?country= : Japan, Oceania, Asia, International --------
-JP = { languages = ["en"], currency = "EUR", feed_label = "EUR_115746111826", link = "country", shipping = 39 }
-AU = { languages = ["en"], currency = "EUR", feed_label = "AU", link = "country", shipping = 69 }
-NZ = { languages = ["en"], currency = "EUR", feed_label = "NZ", link = "country", shipping = 69 }
+JP = { languages = ["en"], currency = "EUR", feed_label = "EUR_115746111826", link = "country" }
+AU = { languages = ["en"], currency = "EUR", feed_label = "AU", link = "country" }
+NZ = { languages = ["en"], currency = "EUR", feed_label = "NZ", link = "country" }
 
 # Gulf (ASIA market)
-AE = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
-SA = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
-KW = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
-OM = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
-BH = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country", shipping = 39 }
+AE = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country" }
+SA = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country" }
+KW = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country" }
+OM = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country" }
+BH = { languages = ["en"], currency = "EUR", feed_label = "EUR_109522649426", link = "country" }
 
 # Asia (ASIA market), one label per country as the app had them
-HK = { languages = ["en"], currency = "EUR", feed_label = "HK", link = "country", shipping = 39 }
-ID = { languages = ["en"], currency = "EUR", feed_label = "ID", link = "country", shipping = 39 }
-IN = { languages = ["en"], currency = "EUR", feed_label = "IN", link = "country", shipping = 39 }
-KH = { languages = ["en"], currency = "EUR", feed_label = "KH", link = "country", shipping = 39 }
-LK = { languages = ["en"], currency = "EUR", feed_label = "LK", link = "country", shipping = 39 }
-MY = { languages = ["en"], currency = "EUR", feed_label = "MY", link = "country", shipping = 39 }
-PH = { languages = ["en"], currency = "EUR", feed_label = "PH", link = "country", shipping = 39 }
-SG = { languages = ["en"], currency = "EUR", feed_label = "SG", link = "country", shipping = 39 }
-TH = { languages = ["en"], currency = "EUR", feed_label = "TH", link = "country", shipping = 39 }
-TW = { languages = ["en"], currency = "EUR", feed_label = "TW", link = "country", shipping = 39 }
-VN = { languages = ["en"], currency = "EUR", feed_label = "VN", link = "country", shipping = 39 }
+HK = { languages = ["en"], currency = "EUR", feed_label = "HK", link = "country" }
+ID = { languages = ["en"], currency = "EUR", feed_label = "ID", link = "country" }
+IN = { languages = ["en"], currency = "EUR", feed_label = "IN", link = "country" }
+KH = { languages = ["en"], currency = "EUR", feed_label = "KH", link = "country" }
+LK = { languages = ["en"], currency = "EUR", feed_label = "LK", link = "country" }
+MY = { languages = ["en"], currency = "EUR", feed_label = "MY", link = "country" }
+PH = { languages = ["en"], currency = "EUR", feed_label = "PH", link = "country" }
+SG = { languages = ["en"], currency = "EUR", feed_label = "SG", link = "country" }
+TH = { languages = ["en"], currency = "EUR", feed_label = "TH", link = "country" }
+TW = { languages = ["en"], currency = "EUR", feed_label = "TW", link = "country" }
+VN = { languages = ["en"], currency = "EUR", feed_label = "VN", link = "country" }
 
 # International market
-ZA = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-IL = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-LB = { languages = ["en", "fr"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-BD = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-JO = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-KZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-MM = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-MU = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-NP = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-PK = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
-UZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country", shipping = 39 }
+ZA = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+IL = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+LB = { languages = ["en", "fr"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+BD = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+JO = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+KZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+MM = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+MU = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+NP = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+PK = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }
+UZ = { languages = ["en"], currency = "EUR", feed_label = "EUR_370737387", link = "country" }

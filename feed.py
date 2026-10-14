@@ -94,7 +94,23 @@ def load_config(path):
             raise Fatal(f"config: {cc} link must use {{handle}} and {{variant}} and only "
                         f"{', '.join(sorted(LINK_FIELDS))}")
         feed_label(cfg, c["feed_label"])
+    cfg["zone_of"] = shipping_zones(cfg)
     return cfg
+
+
+def shipping_zones(cfg):
+    """Country -> (zone, rate, currency): the Shopify zone that contains it."""
+    zone_of = {}
+    for name, z in cfg.get("shipping_zones", {}).items():
+        for cc in z.get("countries", []):
+            if cc in zone_of:
+                raise Fatal(f"config: {cc} is in two shipping zones, {zone_of[cc][0]} and {name}")
+            zone_of[cc] = (name, Decimal(str(z["rate"])).quantize(Decimal("0.01")), z.get("currency", "EUR"))
+    missing = [cc for cc in cfg["countries"] if cc not in zone_of]
+    if missing:
+        raise Fatal(f"config: no shipping zone contains {', '.join(missing)}, so checkout can't deliver "
+                    f"there. Add the zone from Shopify or remove the country")
+    return zone_of
 
 
 def link_pattern(cfg, cc):
@@ -316,13 +332,8 @@ class Run:
                 self.warn(f"'{p['title']}' is not on the Online Store, so it has no page to link to; left out")
 
     def shipping(self, cc, currency):
-        """Shipping amount for one country in the feed currency, or None."""
-        c = self.cfg["countries"][cc]
-        if "shipping" not in c:
-            self.warn(f"{cc}: no shipping in config; Merchant Center account settings apply")
-            return None
-        amount = Decimal(str(c["shipping"])).quantize(Decimal("0.01"))
-        source = c.get("shipping_currency", "EUR")
+        """Shipping for one country in the feed currency, from the zone containing it, or None."""
+        _, amount, source = self.cfg["zone_of"][cc]
         if source == currency or amount == 0:
             return amount
         if source != "EUR":
@@ -548,7 +559,7 @@ def report(run, started):
     lines.append("")
 
     lines += ["## Items per country", "",
-              "| Country | Feed label | Languages | Currency | Items | In stock | Shipping | Prices |",
+              "| Country | Feed label | Languages | Currency | Items | In stock | Shipping (zone) | Prices |",
               "|---|---|---|---|---|---|---|---|"]
     by_country = defaultdict(dict)
     for f in run.feeds:
@@ -563,7 +574,7 @@ def report(run, started):
         prices = " / ".join(f"{it['title'].split(' - ')[-1]} {it['sale_price'] or it['price']}"
                             for it in sorted(offers.values(), key=lambda x: x["title"]))
         lines.append(f"| {cc} | {feed_label(cfg, c['feed_label'])} | {', '.join(c['languages'])} | {c['currency']} "
-                     f"| {len(offers)} | {stock} | {', '.join(sorted(ships))} | {prices} |")
+                     f"| {len(offers)} | {stock} | {', '.join(sorted(ships))} ({cfg['zone_of'][cc][0]}) | {prices} |")
     lines.append("")
 
     lines += ["## Feeds", "", "One Merchant Center data source each: fetch URL, feed label, content language, countries.", "",

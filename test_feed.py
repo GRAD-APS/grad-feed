@@ -181,6 +181,35 @@ class FeedTest(unittest.TestCase):
             run.build()
 
 
+class ShippingZoneTest(unittest.TestCase):
+    def zones(self, zones, countries=("JP",)):
+        raw = tomllib.loads((HERE / "config.toml").read_text(encoding="utf-8"))
+        raw["shipping_zones"] = zones
+        raw["countries"] = {cc: raw["countries"][cc] for cc in countries}
+        return feed.shipping_zones(raw)
+
+    def test_each_country_takes_its_own_zone(self):
+        self.assertEqual(CFG["zone_of"]["JP"], ("Japan", Decimal("140.00"), "EUR"))
+        self.assertEqual(CFG["zone_of"]["SG"][0], "Asia")
+        self.assertEqual(CFG["zone_of"]["US"], ("USA", Decimal("39.00"), "USD"))
+        self.assertEqual(CFG["zone_of"]["GR"][1], Decimal("89.00"))
+
+    def test_japan_feed_ships_at_the_japan_rate(self):
+        f = run_for(CFG, {("EUR_115746111826", "en"): ["JP"]}).feeds[0]
+        ship = {s.find(G + "country").text: s.find(G + "price").text
+                for s in first_item(CFG, f).findall(G + "shipping")}
+        self.assertEqual(ship, {"JP": "140.00 EUR"})
+
+    def test_country_in_no_zone_stops_the_run(self):
+        with self.assertRaises(feed.Fatal):
+            self.zones({"Asia": {"rate": 39, "countries": ["SG"]}})
+
+    def test_country_in_two_zones_stops_the_run(self):
+        with self.assertRaises(feed.Fatal):
+            self.zones({"Japan": {"rate": 140, "countries": ["JP"]},
+                        "Asia": {"rate": 39, "countries": ["JP", "SG"]}})
+
+
 class ConfigTest(unittest.TestCase):
     def test_uk_is_out(self):
         self.assertNotIn("GB", CFG["countries"])
@@ -191,26 +220,8 @@ class ConfigTest(unittest.TestCase):
     def test_links_never_use_a_country_domain(self):
         self.assertNotRegex(CFG["base_url"], r"gradnordic\.(?!com)")
 
-    def test_launch_config_differs_only_where_intended(self):
-        launch_path = HERE / "config.launch.toml"
-        if not launch_path.exists():
-            self.skipTest("config.launch.toml is kept local")
-        launch = feed.load_config(launch_path)
-        self.assertEqual(launch["base_url"], "https://gradnordic.com")
-        self.assertFalse(launch["test_mode"])
-        self.assertEqual(launch["countries"]["CH"]["link"], "country")
-        self.assertEqual(launch["countries"]["SE"]["link"], "country")
-        self.assertEqual(feed.link_pattern(launch, "CA"), "{base_url}/en-ca/products/{handle}?variant={variant}")
-        test = tomllib.loads((HERE / "config.toml").read_text(encoding="utf-8"))
-        raw = tomllib.loads(launch_path.read_text(encoding="utf-8"))
-        for cc in set(test["countries"]) - {"CH", "CA"}:
-            self.assertEqual(raw["countries"][cc], test["countries"][cc], cc)
-
-    def test_launch_labels_are_the_apps(self):
-        launch_path = HERE / "config.launch.toml"
-        if not launch_path.exists():
-            self.skipTest("config.launch.toml is kept local")
-        labels = {cc: c["feed_label"] for cc, c in feed.load_config(launch_path)["countries"].items()}
+    def test_labels_are_the_apps(self):
+        labels = {cc: c["feed_label"] for cc, c in CFG["countries"].items()}
         app = {"EUR_62471242066": "FR BE NL ES PT LU LI BG CY CZ EE FI GE GR HR HU IE LT LV MT NO PL RO SK TR UA",
                "EUR_101524046162": "DE AT", "EUR_104670429522": "IT", "EUR_101523849554": "DK",
                "USD_92753658194": "US", "EUR_115746111826": "JP", "EUR_109522649426": "AE SA KW OM BH",

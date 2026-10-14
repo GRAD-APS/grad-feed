@@ -29,6 +29,13 @@ dropped), link, images, availability, price and sale_price, brand, mpn, gtin
 when Shopify has a barcode, condition, `google_product_category` 4539 (Wine
 Fridges), and shipping per country.
 
+Shipping is copied from Shopify's General profile into `[shipping_zones]`,
+zone by zone. Each country takes the rate of the zone that contains it, and
+the run stops if a country is in no zone or in two. The feed can't read
+Shopify's shipping settings itself, because the API app has no shipping scope
+and the job runs without secrets. So when a rate or zone changes in Shopify,
+change it here as well.
+
 ## Links
 
 Set per country in `config.toml` (`link`):
