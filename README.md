@@ -5,9 +5,8 @@ Pages for Merchant Center to fetch. It replaces the product sync of Shopify's
 Google & YouTube app, which sends a country's own domain once that country
 moves to one, while Merchant Center can claim only one website.
 
-**Status:** published in **test mode**. Offer IDs and feed labels carry a
-`TEST_` prefix, and every item is excluded from every destination, so nothing
-can show anywhere.
+**Status:** live since 14 Oct 2026, with links on https://gradnordic.com,
+the Google & YouTube app's own offer IDs and feed labels, and test mode off.
 
 Feeds and the run report: https://grad-aps.github.io/grad-feed/
 
@@ -37,9 +36,8 @@ Set per country in `config.toml` (`link`):
 | Countries | Link |
 |---|---|
 | Euro countries | `{base_url}{folder}/products/{handle}?variant=…`, no `?country=`, standard EUR price |
-| Switzerland, USA | `/en-ch/…`, `/en-us/…` |
-| Sweden, Canada | today `…&country=SE` / `…&country=CA`; launch `/en-se/…` / `/en-ca/…` |
-| Japan, Oceania, Asia, International | main domain with `&country=XX` |
+| USA, Canada | `/en-us/…`, `/en-ca/…` |
+| Switzerland, Sweden, Japan, Oceania, Asia, International | main domain with `&country=XX` |
 
 The run stops before publishing if two countries in one feed have different
 link rules, or if a euro country's price differs from the standard price.
@@ -61,13 +59,8 @@ GitHub Actions builds the feeds every 6 hours, on every push to
 `config.toml` or `feed.py`, and on demand under Actions > Shopping feed > Run
 workflow. Only the on-demand run checks links.
 
-## Launch
+## Test mode
 
-1. Replace `config.toml` with the launch config. That sets `base_url` to
-   gradnordic.com, turns test mode off, and moves Sweden and Canada onto
-   their own folders.
-2. Push, then run the workflow with link checks.
-3. Merchant Center: feed labels can't be changed on an existing data source,
-   so create new data sources for the non-TEST files (real labels), and remove
-   the TEST ones.
-4. Same day, turn off the Google & YouTube app's product sync.
+Set `test_mode = true` to publish TEST_ offer IDs and feed labels with every
+destination excluded. Feed labels can't be changed on an existing Merchant
+Center data source, so test and live feeds always need separate data sources.

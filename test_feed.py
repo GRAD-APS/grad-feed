@@ -101,24 +101,26 @@ class LinkTest(unittest.TestCase):
         run = run_for(cfg, {(cfg["countries"][cc]["feed_label"], lang): [cc]}, lang=lang)
         return run.feeds[0]["items"][0]["link"]
 
+    BASE = CFG["base_url"]
+    PATH = "/products/grad-no-1-steel-series?variant=47061726298450"
+
     def test_euro_countries_use_the_language_folder_and_no_country(self):
-        self.assertEqual(self.link(CFG, "FR", "fr"),
-                         "https://grad.dk/fr/products/grad-no-1-steel-series?variant=47061726298450")
-        self.assertEqual(self.link(CFG, "DE", "en"),
-                         "https://grad.dk/products/grad-no-1-steel-series?variant=47061726298450")
-        self.assertEqual(self.link(CFG, "DK", "da"),
-                         "https://grad.dk/da/products/grad-no-1-steel-series?variant=47061726298450")
+        self.assertEqual(self.link(CFG, "FR", "fr"), f"{self.BASE}/fr{self.PATH}")
+        self.assertEqual(self.link(CFG, "DE", "en"), f"{self.BASE}{self.PATH}")
+        self.assertEqual(self.link(CFG, "DK", "da"), f"{self.BASE}/da{self.PATH}")
 
     def test_market_subfolders(self):
-        self.assertEqual(self.link(CFG, "CH", "en"),
-                         "https://grad.dk/en-ch/products/grad-no-1-steel-series?variant=47061726298450")
-        self.assertEqual(self.link(CFG, "US", "en"),
-                         "https://grad.dk/en-us/products/grad-no-1-steel-series?variant=47061726298450")
+        self.assertEqual(self.link(CFG, "US", "en"), f"{self.BASE}/en-us{self.PATH}")
+        self.assertEqual(self.link(CFG, "CA", "en"), f"{self.BASE}/en-ca{self.PATH}")
 
     def test_main_domain_countries_keep_country(self):
-        self.assertEqual(self.link(CFG, "SE", "en"),
-                         "https://grad.dk/products/grad-no-1-steel-series?variant=47061726298450&country=SE")
+        self.assertEqual(self.link(CFG, "CH", "en"), f"{self.BASE}{self.PATH}&country=CH")
+        self.assertEqual(self.link(CFG, "SE", "en"), f"{self.BASE}{self.PATH}&country=SE")
         self.assertTrue(self.link(CFG, "JP", "en").endswith("&country=JP"))
+
+    def test_live_config(self):
+        self.assertEqual(self.BASE, "https://gradnordic.com")
+        self.assertFalse(CFG["test_mode"])
 
     def test_euro_countries_must_share_the_standard_price(self):
         cfg = config()
@@ -196,12 +198,27 @@ class ConfigTest(unittest.TestCase):
         launch = feed.load_config(launch_path)
         self.assertEqual(launch["base_url"], "https://gradnordic.com")
         self.assertFalse(launch["test_mode"])
-        self.assertEqual(feed.link_pattern(launch, "SE"), "{base_url}/en-se/products/{handle}?variant={variant}")
+        self.assertEqual(launch["countries"]["CH"]["link"], "country")
+        self.assertEqual(launch["countries"]["SE"]["link"], "country")
         self.assertEqual(feed.link_pattern(launch, "CA"), "{base_url}/en-ca/products/{handle}?variant={variant}")
         test = tomllib.loads((HERE / "config.toml").read_text(encoding="utf-8"))
         raw = tomllib.loads(launch_path.read_text(encoding="utf-8"))
-        for cc in set(test["countries"]) - {"SE", "CA"}:
+        for cc in set(test["countries"]) - {"CH", "CA"}:
             self.assertEqual(raw["countries"][cc], test["countries"][cc], cc)
+
+    def test_launch_labels_are_the_apps(self):
+        launch_path = HERE / "config.launch.toml"
+        if not launch_path.exists():
+            self.skipTest("config.launch.toml is kept local")
+        labels = {cc: c["feed_label"] for cc, c in feed.load_config(launch_path)["countries"].items()}
+        app = {"EUR_62471242066": "FR BE NL ES PT LU LI BG CY CZ EE FI GE GR HR HU IE LT LV MT NO PL RO SK TR UA",
+               "EUR_101524046162": "DE AT", "EUR_104670429522": "IT", "EUR_101523849554": "DK",
+               "USD_92753658194": "US", "EUR_115746111826": "JP", "EUR_109522649426": "AE SA KW OM BH",
+               "EUR_370737387": "ZA IL LB BD JO KZ MM MU NP PK UZ", "CHF_119513284946": "CH",
+               "SEK_119513022802": "SE", "CAD_113515200850": "CA", "AU": "AU", "NZ": "NZ",
+               **{cc: cc for cc in "HK ID IN KH LK MY PH SG TH TW VN".split()}}
+        expected = {cc: label for label, ccs in app.items() for cc in ccs.split()}
+        self.assertEqual(labels, expected)
 
 
 if __name__ == "__main__":

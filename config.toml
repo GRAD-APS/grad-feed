@@ -9,15 +9,15 @@
 shop = "grad-dk.myshopify.com"
 api_version = "2026-07"
 
-# TEST MODE: offer IDs and feed labels get a TEST_ prefix, and every item is
-# excluded from every destination, so nothing can show anywhere. Feed labels
+# Test mode (true): offer IDs and feed labels get a TEST_ prefix, and every item
+# is excluded from every destination, so nothing can show anywhere. Feed labels
 # max out at 20 characters, so a test label is TEST_ plus the label without its
 # currency (EUR_62471242066 becomes TEST_62471242066).
-test_mode = true
+test_mode = false
 
 # Every product link uses this domain and never a country domain: Merchant
 # Center can claim only one website.
-base_url = "https://grad.dk"
+base_url = "https://gradnordic.com"
 
 # Where the feeds are published, for links in the run report.
 pages_url = "https://grad-aps.github.io/grad-feed"
@@ -129,14 +129,14 @@ SK = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", lin
 TR = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 39 }
 UA = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", link = "folder", shipping = 0 }
 
-# --- Own subfolder and currency ----------------------------------------------
-CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "{base_url}/en-ch/products/{handle}?variant={variant}", shipping = 0 }
+# --- Own currency --------------------------------------------------------------
 US = { languages = ["en"], currency = "USD", feed_label = "USD_92753658194", link = "{base_url}/en-us/products/{handle}?variant={variant}", shipping = 39, shipping_currency = "USD" }
-
-# Launch: link = "{base_url}/en-se/products/{handle}?variant={variant}"
+# Main domain with ?country=CH, not /en-ch/
+CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "country", shipping = 0 }
+# Main domain with ?country=SE, not /en-se/
 SE = { languages = ["en"], currency = "SEK", feed_label = "SEK_119513022802", link = "country", shipping = 0 }
-# Launch: link = "{base_url}/en-ca/products/{handle}?variant={variant}"
-CA = { languages = ["en"], currency = "CAD", feed_label = "CAD_113515200850", link = "country", shipping = 39 }
+# Before launch: link = "country"
+CA = { languages = ["en"], currency = "CAD", feed_label = "CAD_113515200850", link = "{base_url}/en-ca/products/{handle}?variant={variant}", shipping = 39 }
 
 # --- Main domain with ?country= : Japan, Oceania, Asia, International --------
 JP = { languages = ["en"], currency = "EUR", feed_label = "EUR_115746111826", link = "country", shipping = 39 }
