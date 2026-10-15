@@ -157,8 +157,9 @@ UA = { languages = ["en"], currency = "EUR", feed_label = "EUR_62471242066", lin
 
 # --- Own currency --------------------------------------------------------------
 US = { languages = ["en"], currency = "USD", feed_label = "USD_92753658194", link = "{base_url}/en-us/products/{handle}?variant={variant}" }
-# Main domain with ?country=CH, not /en-ch/
-CH = { languages = ["en"], currency = "CHF", feed_label = "CHF_119513284946", link = "country" }
+# Main domain with ?country=CH, not /en-ch/. One file per language, same offer
+# IDs and label in each (Google: same ID per language in a multilingual country).
+CH = { languages = ["de", "fr", "it", "en"], currency = "CHF", feed_label = "CHF_119513284946", link = "country" }
 # Main domain with ?country=SE, not /en-se/
 SE = { languages = ["en"], currency = "SEK", feed_label = "SEK_119513022802", link = "country" }
 # Before launch: link = "country"
