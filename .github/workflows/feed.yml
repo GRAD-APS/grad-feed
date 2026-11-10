@@ -6,7 +6,7 @@ on:
   workflow_dispatch:          # "Run workflow" = run now
     inputs:
       check_links:
-        description: Open one landing page per feed and compare domain, currency and price
+        description: Open one landing page per feed (domain, currency, price) and compare shipping with checkout
         type: boolean
         default: true
   push:
@@ -38,7 +38,7 @@ jobs:
         name: Build feeds
         run: |
           set +e
-          python feed.py --out site ${{ (github.event_name == 'workflow_dispatch' && inputs.check_links) && '--check-links' || '' }}
+          python feed.py --out site ${{ (github.event_name == 'workflow_dispatch' && inputs.check_links) && '--check-links --check-shipping' || '' }}
           code=$?
           cat site/report.md >> "$GITHUB_STEP_SUMMARY"
           echo "status=$code" >> "$GITHUB_OUTPUT"

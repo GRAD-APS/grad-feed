@@ -95,6 +95,7 @@ def load_config(path):
                         f"{', '.join(sorted(LINK_FIELDS))}")
         feed_label(cfg, c["feed_label"])
     cfg["zone_of"] = shipping_zones(cfg)
+    cfg["free_from_of"] = free_shipping_from(cfg)
     return cfg
 
 
@@ -111,6 +112,16 @@ def shipping_zones(cfg):
         raise Fatal(f"config: no shipping zone contains {', '.join(missing)}, so checkout can't deliver "
                     f"there. Add the zone from Shopify or remove the country")
     return zone_of
+
+
+def free_shipping_from(cfg):
+    """Country -> order value, in the zone's currency, from which its rate is free."""
+    out = {}
+    for z in cfg.get("shipping_zones", {}).values():
+        if z.get("free_from") is not None:
+            for cc in z.get("countries", []):
+                out[cc] = Decimal(str(z["free_from"])).quantize(Decimal("0.01"))
+    return out
 
 
 def link_pattern(cfg, cc):
@@ -207,6 +218,71 @@ def landing(url, retries=4):
             time.sleep(5 * (attempt + 1))
     m = re.search(r'Shopify\.currency\s*=\s*\{"active":"([A-Z]{3})","rate":"([0-9.]+)"', page)
     return final, (m.group(1) if m else None), (Decimal(m.group(2)) if m else None), page
+
+
+CART_QUERY = """
+mutation($c: CountryCode!, $lines: [CartLineInput!]!, $addr: [CartSelectableAddressInput!]) @inContext(country: $c) {
+  cartCreate(input: { lines: $lines, buyerIdentity: { countryCode: $c }, delivery: { addresses: $addr } }) {
+    cart { deliveryGroups(first: 3) { nodes { deliveryOptions { estimatedCost { amount currencyCode } } } } }
+    userErrors { field message }
+  }
+}"""
+# Countries whose checkout quotes no rate without a city, postcode or province.
+TEST_ADDRESS = {
+    "US": {"city": "New York", "zip": "10001", "provinceCode": "NY"},
+    "CA": {"city": "Toronto", "zip": "M5H 2N2", "provinceCode": "ON"},
+    "JP": {"city": "Tokyo", "zip": "100-0001", "provinceCode": "JP-13"},
+    "AE": {"city": "Dubai", "provinceCode": "DU"},
+    "AU": {"city": "Sydney", "zip": "2000", "provinceCode": "NSW"},
+    "NZ": {"city": "Auckland", "zip": "1010", "provinceCode": "AUK"},
+    "IN": {"city": "Mumbai", "zip": "400001", "provinceCode": "MH"},
+    "HK": {"city": "Hong Kong", "provinceCode": "HK"},
+    "ES": {"city": "Madrid", "zip": "28001"},
+    "IT": {"city": "Milano", "zip": "20121"},
+    "PT": {"city": "Lisboa", "zip": "1000-001"},
+    "IE": {"city": "Dublin", "zip": "D02 X285"},
+    "RO": {"city": "Bucuresti", "zip": "010011", "provinceCode": "B"},
+    "ZA": {"city": "Cape Town", "zip": "8001", "provinceCode": "WC"},
+    "ID": {"city": "Jakarta", "zip": "10110", "provinceCode": "JK"},
+    "MY": {"city": "Kuala Lumpur", "zip": "50000", "provinceCode": "KUL"},
+    "PH": {"city": "Manila", "zip": "1000", "provinceCode": "PH-00"},
+    "TH": {"city": "Bangkok", "zip": "10100", "provinceCode": "TH-10"},
+    "KW": {"city": "Kuwait City", "provinceCode": "KW-KU"},
+}
+
+
+def checkout_rate(cfg, cc, variant_id, retries=4):
+    """The cheapest delivery rate checkout quotes for one unit shipped to `cc`:
+    (amount, currency), or None when no rate comes back for the test address.
+    A throwaway Storefront API cart; carts are not checkouts."""
+    address = {"address1": "Test Street 1", "city": "Test", "countryCode": cc, "firstName": "QA", "lastName": "Test"}
+    address.update(TEST_ADDRESS.get(cc, {}))
+    body = json.dumps({"query": CART_QUERY, "variables": {
+        "c": cc,
+        "lines": [{"merchandiseId": f"gid://shopify/ProductVariant/{variant_id}", "quantity": 1}],
+        "addr": [{"selected": True, "address": {"deliveryAddress": address}}]}}).encode()
+    url = f"https://{cfg['shop']}/api/{cfg['api_version']}/graphql.json"
+    for attempt in range(retries):
+        time.sleep(0.5)
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 502, 503) or attempt == retries - 1:
+                raise
+            time.sleep(5 * (attempt + 1))
+    if data.get("errors"):
+        raise RuntimeError(str(data["errors"])[:200])
+    result = data["data"]["cartCreate"]
+    if result["userErrors"] or not result["cart"]:
+        return None
+    options = [o["estimatedCost"] for g in result["cart"]["deliveryGroups"]["nodes"] for o in g["deliveryOptions"]]
+    if not options:
+        return None
+    best = min(options, key=lambda o: Decimal(o["amount"]))
+    return Decimal(best["amount"]).quantize(Decimal("0.01")), best["currencyCode"]
 
 
 # --- text -------------------------------------------------------------------
@@ -309,6 +385,7 @@ class Run:
         self.feeds = []       # summaries for the report
         self.dropped = {}     # (lang, title) -> dropped sentences
         self.links = []       # landing page checks
+        self.ship_checks = [] # feed shipping vs checkout
 
     def warn(self, msg):
         if msg not in self.warnings:
@@ -369,6 +446,53 @@ class Run:
             self.warn(f"{cc}: no {currency} exchange rate on the storefront; shipping left out")
             return None
         return (amount * self.rates[cc]).quantize(Decimal("0.01"))
+
+    def shipping_for(self, cc, currency, base, price):
+        """One item's shipping to one country: the zone rate, or 0 once the item
+        alone reaches the zone's free_from (the US: $39, free from $650)."""
+        free_from = self.cfg.get("free_from_of", {}).get(cc)
+        if base is None or free_from is None or price is None:
+            return base
+        if self.cfg["zone_of"][cc][2] != currency:
+            self.warn(f"{cc}: free_from is in {self.cfg['zone_of'][cc][2]}, the feed in {currency}; not applied")
+            return base
+        return Decimal("0.00") if price >= free_from else base
+
+    def check_shipping(self):
+        """Compare each country's feed shipping with the rate checkout quotes.
+
+        One throwaway Storefront API cart per country and distinct feed rate,
+        with a delivery address in that country. A country whose address needs
+        more than this script knows (no rate comes back) is reported as not
+        checked, never as an error.
+        """
+        seen = set()
+        for f in self.feeds:
+            for it in f["items"]:
+                for cc, amount in it["shipping"]:
+                    if (cc, amount) in seen:
+                        continue
+                    seen.add((cc, amount))
+                    result = {"country": cc, "item": it["title"], "feed": f"{amount} {f['currency']}"}
+                    try:
+                        got = checkout_rate(self.cfg, cc, it["variant_id"])
+                    except Exception as e:  # noqa: BLE001 - reported, never fatal
+                        got = None
+                        result["note"] = f"could not read ({str(e)[:80]})"
+                    if got is None:
+                        result.setdefault("note", "not checked: no rate for the test address")
+                    else:
+                        cost, currency = got
+                        result["checkout"] = f"{cost} {currency}"
+                        if cost == 0 and amount == 0:
+                            pass  # free is free in any currency (Denmark: feed in EUR, checkout in DKK)
+                        elif currency != f["currency"]:
+                            result["note"] = f"not compared: feed in {f['currency']}, checkout in {currency}"
+                        elif cost != amount:
+                            result["problem"] = f"feed says {amount} {f['currency']}, checkout charges {cost} {currency}"
+                            self.errors.append(f"{cc} shipping for {it['title']}: {result['problem']}. "
+                                               f"Update [shipping_zones] in config.toml")
+                    self.ship_checks.append(result)
 
     def build(self):
         cfg = self.cfg
@@ -437,7 +561,8 @@ class Run:
                 items.append({**rec,
                               "id": offer_id(cfg, oid),
                               "link": link,
-                              "shipping": [(cc, ship[cc]) for cc in present if ship[cc] is not None],
+                              "shipping": [(cc, self.shipping_for(cc, currency, ship[cc], rec["sale_price"] or rec["price"]))
+                                           for cc in present if ship[cc] is not None],
                               "excluded": [cc for cc in countries if cc not in present],
                               "paused": f"{label}/{lang}/{oid}" in paused})
 
@@ -572,6 +697,18 @@ def report(run, started):
                   for r in run.links]
         lines.append("")
 
+    if run.ship_checks:
+        bad = [r for r in run.ship_checks if "problem" in r]
+        unchecked = sorted({r["country"] for r in run.ship_checks if "note" in r})
+        lines += ["## Shipping vs checkout", "",
+                  f"{len(run.ship_checks) - len(bad) - len(unchecked)} matched, {len(bad)} differ, "
+                  f"{len(unchecked)} not checked (no rate for the test address, or another currency"
+                  f"{': ' + ', '.join(unchecked) if unchecked else ''}).", ""]
+        if bad:
+            lines += ["| Country | Item | Feed | Checkout |", "|---|---|---|---|"]
+            lines += [f"| {r['country']} | {r['item']} | {r['feed']} | {r['checkout']} |" for r in bad]
+            lines.append("")
+
     missing = run.missing_fields()
     lines += ["## Missing fields", ""]
     lines += [f"- **{field}**: {', '.join(titles)}" for field, titles in missing.items()] or ["None."]
@@ -649,6 +786,8 @@ def main(argv=None):
     ap.add_argument("--out", default=ROOT / "site", type=Path)
     ap.add_argument("--check-links", action="store_true",
                     help="open one landing page per feed and compare domain, currency and price")
+    ap.add_argument("--check-shipping", action="store_true",
+                    help="compare each country's shipping with what checkout quotes (throwaway carts)")
     args = ap.parse_args(argv)
 
     started = dt.datetime.now(dt.timezone.utc)
@@ -659,6 +798,8 @@ def main(argv=None):
         run.build()
         if run.check_links:
             run.verify_links()
+        if args.check_shipping:
+            run.check_shipping()
     except Fatal as e:
         text = fatal_report(started, e)
         (args.out / "report.md").write_text(text, encoding="utf-8")
@@ -678,6 +819,7 @@ def main(argv=None):
         "errors": run.errors, "warnings": run.warnings, "missing_fields": run.missing_fields(),
         "feeds": [{k: v for k, v in f.items() if k != "items"} | {"items": len(f["items"])} for f in run.feeds],
         "links": run.links,
+        "shipping_checks": run.ship_checks,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
     print(text)
     return 2 if run.errors else 0

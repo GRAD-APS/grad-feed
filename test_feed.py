@@ -206,6 +206,48 @@ class ShippingZoneTest(unittest.TestCase):
                 for s in first_item(CFG, f).findall(G + "shipping")}
         self.assertEqual(ship, {"JP": "140.00 EUR"})
 
+    def test_us_ships_free_from_the_threshold_only(self):
+        # $39, free from $650: Steel ($699) ships free, the $499 editions do not.
+        self.assertEqual(CFG["free_from_of"], {"US": Decimal("650.00")})
+        for price, want in (("699.0", "0.00 USD"), ("499.0", "39.00 USD"), ("650.0", "0.00 USD")):
+            f = run_for(CFG, {("USD_92753658194", "en"): ["US"]}, price=price).feeds[0]
+            ship = {s.find(G + "country").text: s.find(G + "price").text
+                    for s in first_item(CFG, f).findall(G + "shipping")}
+            self.assertEqual(ship, {"US": want}, price)
+
+    def test_free_from_never_reaches_other_countries(self):
+        f = run_for(CFG, {("EUR_115746111826", "en"): ["JP"]}, price="900.0").feeds[0]
+        ship = [s.find(G + "price").text for s in first_item(CFG, f).findall(G + "shipping")]
+        self.assertEqual(ship, ["140.00 EUR"])
+
+    def test_canada_ships_at_its_own_cad_rate(self):
+        self.assertEqual(CFG["zone_of"]["CA"], ("Canada", Decimal("65.00"), "CAD"))
+        f = run_for(CFG, {("CAD_113515200850", "en"): ["CA"]}, price="749.0").feeds[0]
+        ship = [s.find(G + "price").text for s in first_item(CFG, f).findall(G + "shipping")]
+        self.assertEqual(ship, ["65.00 CAD"])
+
+    def test_shipping_check_reports_a_difference(self):
+        run = run_for(CFG, {("USD_92753658194", "en"): ["US"], ("EUR_115746111826", "en"): ["JP"]}, price="499.0")
+        quotes = {"US": (Decimal("39.00"), "USD"), "JP": (Decimal("150.00"), "EUR")}
+        real, feed.checkout_rate = feed.checkout_rate, lambda cfg, cc, variant: quotes[cc]
+        try:
+            run.check_shipping()
+        finally:
+            feed.checkout_rate = real
+        self.assertEqual([r["country"] for r in run.ship_checks if "problem" in r], ["JP"])
+        self.assertEqual(len(run.errors), 1)
+        self.assertIn("checkout charges 150.00 EUR", run.errors[0])
+
+    def test_shipping_check_skips_a_country_with_no_rate(self):
+        run = run_for(CFG, {("EUR_115746111826", "en"): ["JP"]})
+        real, feed.checkout_rate = feed.checkout_rate, lambda cfg, cc, variant: None
+        try:
+            run.check_shipping()
+        finally:
+            feed.checkout_rate = real
+        self.assertEqual(run.errors, [])
+        self.assertIn("not checked", run.ship_checks[0]["note"])
+
     def test_country_in_no_zone_stops_the_run(self):
         with self.assertRaises(feed.Fatal):
             self.zones({"Asia": {"rate": 39, "countries": ["SG"]}})

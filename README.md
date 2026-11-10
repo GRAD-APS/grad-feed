@@ -34,7 +34,12 @@ zone by zone. Each country takes the rate of the zone that contains it, and
 the run stops if a country is in no zone or in two. The feed can't read
 Shopify's shipping settings itself, because the API app has no shipping scope
 and the job runs without secrets. So when a rate or zone changes in Shopify,
-change it here as well.
+change it here as well. A zone can carry `free_from`: an item that reaches
+that order value alone is sent with shipping 0 (the US: $39, free from $650).
+
+`--check-shipping` catches a zone that has drifted: it asks checkout for the
+rate to each country through throwaway Storefront carts (tokenless) and
+reports any difference as an error. The dry run and the on-demand run do it.
 
 ## Links
 
@@ -52,7 +57,7 @@ link rules, or if a euro country's price differs from the standard price.
 ## Run it
 
 ```bash
-python feed.py --out site --check-links
+python feed.py --out site --check-links --check-shipping
 ```
 
 ```bash
@@ -64,7 +69,7 @@ Exit 1 means nothing was written, so the last good feeds stay live.
 
 GitHub Actions builds the feeds every 6 hours, on every push to
 `config.toml` or `feed.py`, and on demand under Actions > Shopping feed > Run
-workflow. Only the on-demand run checks links.
+workflow. Only the on-demand run checks links and shipping.
 
 ## Test mode
 

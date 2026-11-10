@@ -65,15 +65,30 @@ country = "{base_url}{folder}/products/{handle}?variant={variant}&country={count
 # €50 is 0 here. The rate is in `currency` (default EUR) and is converted at
 # Shopify's exchange rate when the country pays in another currency. When a
 # rate or zone changes in Shopify, change it here.
+#
+# free_from (in the zone's currency) is the order value from which the zone's
+# rate is free: an item that reaches it alone is sent with shipping 0. The US
+# is $39, free from $650 (set in Shopify 26 Oct 2026), so Steel at $699 ships
+# free and the $499 editions do not.
+#
+# `python feed.py --check-shipping` compares every rate below with what
+# checkout quotes, through throwaway Storefront carts. The dry-run workflow
+# and a manual "Run workflow" do it; a difference is an error in the report.
+# Read 10 Nov 2026: every zone matched except the two fixed that day (US Steel
+# was $39, checkout $0; Canada was 64.27 CAD converted, checkout 65.00 CAD).
 [shipping_zones]
 Danmark = { rate = 0, countries = ["DK"] }
 Sweden = { rate = 0, countries = ["SE"] }
 Europe = { rate = 0, countries = ["AL", "AD", "AM", "AT", "BE", "BA", "BG", "HR", "CZ", "EE", "FO", "FI", "FR", "DE", "HU", "IE", "IT", "JE", "XK", "LV", "LI", "LT", "LU", "MD", "MC", "ME", "NL", "MK", "NO", "PL", "PT", "RO", "RS", "SK", "SI", "ES", "UA", "CH"] }
 "Greece/Malta" = { rate = 89, countries = ["GR", "MT"] }
-International = { rate = 39, countries = ["ZA", "TR", "CA", "MU", "CY"] }
+International = { rate = 39, countries = ["ZA", "TR", "MU", "CY"] }
+# Canada is in Shopify's International zone, but checkout quotes a round
+# 65 CAD, not EUR 39 converted (64.27). Kept as its own line so the feed says
+# what checkout charges.
+Canada = { rate = 65, currency = "CAD", countries = ["CA"] }
 Japan = { rate = 140, countries = ["JP"] }
 Oceania = { rate = 69, countries = ["AU", "FJ", "NZ"] }
-USA = { rate = 39, currency = "USD", countries = ["US"] }
+USA = { rate = 39, currency = "USD", free_from = 650, countries = ["US"] }
 "United Kingdom" = { rate = 0, countries = ["GB"] }
 Asia = { rate = 39, countries = ["AF", "AZ", "BD", "BT", "BN", "KH", "CN", "GE", "HK", "IN", "ID", "IQ", "IL", "JO", "KZ", "KG", "LA", "MO", "MY", "MV", "MN", "MM", "NP", "PK", "PS", "PH", "SG", "KR", "LK", "TW", "TJ", "TH", "TL", "TM", "UZ", "VN", "YE", "BH", "KW", "LB", "OM", "QA", "SA", "AE"] }
 

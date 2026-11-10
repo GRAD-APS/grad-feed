@@ -20,10 +20,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m unittest -v
-      - name: Build and check links (not published)
+      - name: Build, check links and shipping (not published)
         run: |
           set +e
-          python feed.py --out site --check-links
+          python feed.py --out site --check-links --check-shipping
           code=$?
           cat site/report.md >> "$GITHUB_STEP_SUMMARY"
           exit $code
