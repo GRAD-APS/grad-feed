@@ -76,8 +76,8 @@ country = "{base_url}{folder}/products/{handle}?variant={variant}&country={count
 #
 # free_from (in the zone's currency) is the order value from which the zone's
 # rate is free: an item that reaches it alone is sent with shipping 0. The US
-# is $39, free from $650 (set in Shopify 26 Oct 2026), so Steel at $699 ships
-# free and the $499 editions do not.
+# is $39, free from $450 (in Shopify since 20 Nov 2026; $650 before), so every
+# cooler ships free and a carafe on its own does not.
 #
 # `python feed.py --check-shipping` compares every rate below with what
 # checkout quotes, through throwaway Storefront carts. The dry-run workflow
@@ -96,7 +96,8 @@ International = { rate = 39, countries = ["ZA", "TR", "MU", "CY"] }
 Canada = { rate = 65, currency = "CAD", countries = ["CA"] }
 Japan = { rate = 140, countries = ["JP"] }
 Oceania = { rate = 69, countries = ["AU", "FJ", "NZ"] }
-USA = { rate = 39, currency = "USD", free_from = 650, countries = ["US"] }
+# 20 Nov 2026: free from $450 (was $650), so every cooler ships free and a carafe alone pays.
+USA = { rate = 39, currency = "USD", free_from = 450, countries = ["US"] }
 "United Kingdom" = { rate = 0, countries = ["GB"] }
 Asia = { rate = 39, countries = ["AF", "AZ", "BD", "BT", "BN", "KH", "CN", "GE", "HK", "IN", "ID", "IQ", "IL", "JO", "KZ", "KG", "LA", "MO", "MY", "MV", "MN", "MM", "NP", "PK", "PS", "PH", "SG", "KR", "LK", "TW", "TJ", "TH", "TL", "TM", "UZ", "VN", "YE", "BH", "KW", "LB", "OM", "QA", "SA", "AE"] }
 

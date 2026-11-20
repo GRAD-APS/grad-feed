@@ -207,9 +207,9 @@ class ShippingZoneTest(unittest.TestCase):
         self.assertEqual(ship, {"JP": "140.00 EUR"})
 
     def test_us_ships_free_from_the_threshold_only(self):
-        # $39, free from $650: Steel ($699) ships free, the $499 editions do not.
-        self.assertEqual(CFG["free_from_of"], {"US": Decimal("650.00")})
-        for price, want in (("699.0", "0.00 USD"), ("499.0", "39.00 USD"), ("650.0", "0.00 USD")):
+        # $39, free from $450 (20 Nov 2026): every cooler ships free, a carafe ($149-189) does not.
+        self.assertEqual(CFG["free_from_of"], {"US": Decimal("450.00")})
+        for price, want in (("699.0", "0.00 USD"), ("474.0", "0.00 USD"), ("189.0", "39.00 USD"), ("450.0", "0.00 USD")):
             f = run_for(CFG, {("USD_92753658194", "en"): ["US"]}, price=price).feeds[0]
             ship = {s.find(G + "country").text: s.find(G + "price").text
                     for s in first_item(CFG, f).findall(G + "shipping")}
@@ -240,7 +240,8 @@ class ShippingZoneTest(unittest.TestCase):
 
     def test_shipping_check_reports_a_difference(self):
         run = run_for(CFG, {("USD_92753658194", "en"): ["US"], ("EUR_115746111826", "en"): ["JP"]}, price="499.0")
-        quotes = {"US": (Decimal("39.00"), "USD"), "JP": (Decimal("150.00"), "EUR")}
+        # a $499 cooler ships free to the US since 20 Nov 2026, so checkout quoting 0 there is a match
+        quotes = {"US": (Decimal("0.00"), "USD"), "JP": (Decimal("150.00"), "EUR")}
         real, feed.checkout_rate = feed.checkout_rate, lambda cfg, cc, variant: quotes[cc]
         try:
             run.check_shipping()
