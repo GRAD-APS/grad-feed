@@ -96,6 +96,7 @@ def load_config(path):
         feed_label(cfg, c["feed_label"])
     cfg["zone_of"] = shipping_zones(cfg)
     cfg["free_from_of"] = free_shipping_from(cfg)
+    cfg["image_map_of"] = market_images(cfg, Path(path).parent)
     return cfg
 
 
@@ -122,6 +123,26 @@ def free_shipping_from(cfg):
             for cc in z.get("countries", []):
                 out[cc] = Decimal(str(z["free_from"])).quantize(Decimal("0.01"))
     return out
+
+
+def market_images(cfg, root):
+    """Country -> {image file name: that market's own version}, from [market_images]."""
+    out = {}
+    for cc, name in cfg.get("market_images", {}).items():
+        if cc not in cfg["countries"]:
+            raise Fatal(f"config: market_images names {cc}, which is not a country of the feed")
+        try:
+            out[cc] = json.loads((Path(root) / name).read_text(encoding="utf-8"))["images"]
+        except (OSError, ValueError, KeyError) as e:
+            raise Fatal(f"config: market_images {cc}: cannot read {name} ({e})")
+    return out
+
+
+def swap_image(url, images):
+    """The market's own version of a picture, matched on its file name; else the picture itself."""
+    if not url or not images:
+        return url
+    return images.get(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1], url)
 
 
 def link_pattern(cfg, cc):
@@ -513,6 +534,11 @@ class Run:
             folder_rule = all(cfg["countries"][cc]["link"] == "folder" for cc in countries)
             currency = cfg["countries"][anchor]["currency"]
             ship = {cc: self.shipping(cc, currency) for cc in countries}
+            maps = [cfg.get("image_map_of", {}).get(cc) for cc in countries]
+            if any(m != maps[0] for m in maps):
+                raise Fatal(f"{label}/{lang}: {', '.join(countries)} share a feed but not their market images; "
+                            f"one item carries one set of pictures")
+            images, swapped = maps[0] or {}, 0
             offers = {oid for cc in countries for oid in self.data[(cc, lang)]}
             items, skipped = [], 0
             for oid in sorted(offers):
@@ -558,7 +584,12 @@ class Run:
 
                 link = pattern.format(base_url=cfg["base_url"], folder=FOLDER.get(lang, "/" + lang),
                                       handle=rec["handle"], variant=rec["variant_id"], country=anchor)
+                image = swap_image(rec["image"], images)
+                more = list(dict.fromkeys(swap_image(u, images) for u in rec["more_images"]))
+                swapped += (image != rec["image"]) + sum(1 for u in more if u not in rec["more_images"])
                 items.append({**rec,
+                              "image": image,
+                              "more_images": [u for u in more if u != image],
                               "id": offer_id(cfg, oid),
                               "link": link,
                               "shipping": [(cc, self.shipping_for(cc, currency, ship[cc], rec["sale_price"] or rec["price"]))
@@ -569,7 +600,7 @@ class Run:
             mc_label = feed_label(cfg, label)
             self.feeds.append({"file": f"{mc_label}.{lang}.xml", "label": mc_label, "app_label": label,
                                "language": lang, "currency": currency, "countries": countries,
-                               "anchor": anchor, "items": items, "skipped": skipped})
+                               "anchor": anchor, "items": items, "skipped": skipped, "swapped": swapped})
 
     def verify_links(self):
         """Open the first item of every feed and compare it with the feed."""
@@ -687,6 +718,12 @@ def report(run, started):
         lines += ["## Errors", ""] + [f"- {e}" for e in run.errors] + [""]
     if run.warnings:
         lines += ["## Warnings", ""] + [f"- {w}" for w in run.warnings] + [""]
+
+    if any(f.get("swapped") for f in run.feeds):
+        lines += ["## Market images", ""]
+        lines += [f"- {f['file']} ({', '.join(f['countries'])}): {f['swapped']} image links replaced with "
+                  f"the market's own version" for f in run.feeds if f.get("swapped")]
+        lines.append("")
 
     if run.links:
         ok = sum(1 for r in run.links if "problem" not in r)

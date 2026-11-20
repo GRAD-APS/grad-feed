@@ -47,6 +47,14 @@ paused = [
   "EUR_370737387/en/shopify_ZZ_9687828398418_49451894014290",
 ]
 
+# Market-specific pictures. The US store shows every picture with the cooler's
+# display in Fahrenheit: the theme swaps them by file name. The feed makes the
+# same swap, so Shopping shows the picture the page shows. images_us.json is
+# GENERATED in the theme repo (grad-theme/scripts/build_feed_images.py) from
+# the theme's own map; a picture that is not in it is sent as it is.
+[market_images]
+US = "images_us.json"
+
 # Link rules. A country's `link` is one of these names or a full pattern.
 #   {folder}   language folder: /da /de /es /fr /it /nl /pt /sv, nothing for English
 #   {handle}   the product handle in that language

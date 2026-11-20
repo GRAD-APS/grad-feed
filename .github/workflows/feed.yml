@@ -11,7 +11,7 @@ on:
         default: true
   push:
     branches: [main]
-    paths: [config.toml, feed.py, .github/workflows/feed.yml]
+    paths: [config.toml, feed.py, images_us.json, .github/workflows/feed.yml]
 
 permissions:
   contents: read

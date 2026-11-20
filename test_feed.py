@@ -215,6 +215,18 @@ class ShippingZoneTest(unittest.TestCase):
                     for s in first_item(CFG, f).findall(G + "shipping")}
             self.assertEqual(ship, {"US": want}, price)
 
+    def test_us_gets_its_own_pictures_and_nobody_else_does(self):
+        cfg = config(image_map_of={"US": {"a.jpg": "https://cdn.shopify.com/a-F.jpg?v=1"}})
+        us = first_item(cfg, run_for(cfg, {("USD_92753658194", "en"): ["US"]}).feeds[0])
+        self.assertEqual(us.find(G + "image_link").text, "https://cdn.shopify.com/a-F.jpg?v=1")
+        self.assertEqual([e.text for e in us.findall(G + "additional_image_link")], ["https://cdn.shopify.com/b.jpg"])
+        jp = first_item(cfg, run_for(cfg, {("EUR_115746111826", "en"): ["JP"]}).feeds[0])
+        self.assertEqual(jp.find(G + "image_link").text, "https://cdn.shopify.com/a.jpg")
+
+    def test_live_config_maps_us_pictures_only(self):
+        self.assertEqual(list(CFG["image_map_of"]), ["US"])
+        self.assertTrue(all(u.startswith("https://cdn.shopify.com/") and "-F" in u for u in CFG["image_map_of"]["US"].values()))
+
     def test_free_from_never_reaches_other_countries(self):
         f = run_for(CFG, {("EUR_115746111826", "en"): ["JP"]}, price="900.0").feeds[0]
         ship = [s.find(G + "price").text for s in first_item(CFG, f).findall(G + "shipping")]
