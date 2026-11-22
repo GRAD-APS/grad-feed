@@ -174,6 +174,25 @@ class FeedTest(unittest.TestCase):
         for c in cfg["countries"].values():
             self.assertLessEqual(len(feed.feed_label(cfg, c["feed_label"])), 20)
 
+    def test_preorder_only_for_listed_products_sold_without_stock(self):
+        cfg = config(preorder={"availability_date": "2026-11-25T08:00+0100", "handles": ["grad-no-1-steel-series"]})
+        group = {("EUR_101524046162", "en"): ["DE"]}
+        run = run_for(cfg, group)
+        run.feeds[0]["items"][0]["zero_stock"] = True
+        item = first_item(cfg, run.feeds[0])
+        self.assertEqual(item.find(G + "availability").text, "preorder")
+        self.assertEqual(item.find(G + "availability_date").text, "2026-11-25T08:00+0100")
+        # in stock again: back to in_stock, no date
+        run.feeds[0]["items"][0]["zero_stock"] = False
+        item = first_item(cfg, run.feeds[0])
+        self.assertEqual(item.find(G + "availability").text, "in_stock")
+        self.assertIsNone(item.find(G + "availability_date"))
+        # not listed: selling below zero is not a pre-order
+        other = config(preorder={"availability_date": "2026-11-25T08:00+0100", "handles": ["grad-carafe"]})
+        run = run_for(other, group)
+        run.feeds[0]["items"][0]["zero_stock"] = True
+        self.assertEqual(first_item(other, run.feeds[0]).find(G + "availability").text, "in_stock")
+
     def test_availability_follows_shopify(self):
         f = run_for(CFG, {("EUR_101523849554", "en"): ["DK"]}, available=False).feeds[0]
         self.assertFalse(f["items"][0]["available"])

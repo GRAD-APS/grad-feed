@@ -654,6 +654,17 @@ def el(tag, value):
     return f"<g:{tag}>{escape(INVALID_XML.sub('', str(value)))}</g:{tag}>"
 
 
+def availability(cfg, it):
+    """in_stock, out_of_stock, or preorder: a product listed in [preorder] that Shopify still
+    sells although it has none in stock (the page then says "Pre-order" too)."""
+    if not it["available"]:
+        return "out_of_stock"
+    pre = cfg.get("preorder") or {}
+    if it["zero_stock"] and it["handle"] in pre.get("handles", ()):
+        return "preorder"
+    return "in_stock"
+
+
 def fmt_price(amount, currency):
     return f"{amount} {currency}"
 
@@ -672,8 +683,10 @@ def write_feed(path, cfg, f):
                 el("description", it["description"]), el("link", it["link"]),
                 el("image_link", it["image"])]
         out += [el("additional_image_link", u) for u in it["more_images"]]
-        out += [el("availability", "in_stock" if it["available"] else "out_of_stock"),
-                el("price", fmt_price(it["price"], f["currency"]))]
+        out.append(el("availability", availability(cfg, it)))
+        if availability(cfg, it) == "preorder":
+            out.append(el("availability_date", cfg["preorder"]["availability_date"]))
+        out.append(el("price", fmt_price(it["price"], f["currency"])))
         if it["sale_price"]:
             out.append(el("sale_price", fmt_price(it["sale_price"], f["currency"])))
         out.append(el("brand", cfg["brand"]))
