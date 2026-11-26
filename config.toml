@@ -47,10 +47,20 @@ paused = [
   "EUR_370737387/en/shopify_ZZ_9687828398418_49451894014290",
 ]
 
-# Pre-order: none. A [preorder] table (availability_date, handles) marks listed
-# products as availability "preorder" while Shopify sells them without stock.
-# Used 22 to 25 Nov 2026 for the GRAD Carafe and its sets; the batch was booked
-# in on 25 Nov, so the table is gone. See git history (0f17ba5) to bring it back.
+# Pre-order, standing since 26 Nov 2026. The GRAD Carafe is on "Continue selling
+# when out of stock": when it reaches zero, the store's pages switch to
+# "Pre-order | Arrives later in December" by themselves, and so does this feed
+# on its next build (every 6 hours). A listed product is availability
+# "preorder" ONLY while Shopify sells it with none in stock; with stock it is
+# in_stock, and it goes back by itself when a batch is booked in. So this table
+# stays. The coolers are not listed: Black and Steel also sell below zero and
+# are not pre-orders.
+# availability_date: Google wants a real day and the store only says "later in
+# December", so this is the last day that is still true. If a pre-order is
+# still open when the day comes, move it: Google disapproves a past date.
+[preorder]
+availability_date = "2026-12-31T08:00+0100"
+handles = ["grad-carafe", "grad-no-1-carafe", "grad-no-1-duo-2-carafes", "grad-no-1-ultimate-bundle"]
 
 # Market-specific pictures. The US store shows every picture with the cooler's
 # display in Fahrenheit: the theme swaps them by file name. The feed makes the
