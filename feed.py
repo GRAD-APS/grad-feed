@@ -654,14 +654,27 @@ def el(tag, value):
     return f"<g:{tag}>{escape(INVALID_XML.sub('', str(value)))}</g:{tag}>"
 
 
-def availability(cfg, it):
-    """in_stock, out_of_stock, or preorder: a product listed in [preorder] that Shopify still
-    sells although it has none in stock (the page then says "Pre-order" too)."""
+def preorder_open(cfg, items):
+    """Is the pre-order on in this feed? With [preorder] when = "<handle>" that one product
+    decides for every listed one, as on the store's pages: on while it is sold with none in
+    stock. The sets cannot decide for themselves: a set with a Black or Steel cooler in it
+    always counts as "sold without stock", because those coolers sell below zero.
+    None: no `when`, each listed product decides for itself."""
+    when = (cfg.get("preorder") or {}).get("when")
+    if not when:
+        return None
+    return any(i["handle"] == when and i["available"] and i["zero_stock"] for i in items)
+
+
+def availability(cfg, it, pre_open=None):
+    """in_stock, out_of_stock, or preorder: a product listed in [preorder] while the pre-order
+    is on (see preorder_open; the page then says "Pre-order" too)."""
     if not it["available"]:
         return "out_of_stock"
     pre = cfg.get("preorder") or {}
-    if it["zero_stock"] and it["handle"] in pre.get("handles", ()):
-        return "preorder"
+    if it["handle"] in pre.get("handles", ()):
+        if pre_open if pre_open is not None else it["zero_stock"]:
+            return "preorder"
     return "in_stock"
 
 
@@ -677,14 +690,15 @@ def write_feed(path, cfg, f):
            f"<title>{escape(('TEST ' if test else '') + 'GRAD ' + f['label'] + ' ' + f['language'])}</title>",
            f"<link>{escape(cfg['base_url'])}</link>",
            f"<description>{escape('Countries: ' + ', '.join(f['countries']))}</description>"]
+    pre_open = preorder_open(cfg, f["items"])
     for it in f["items"]:
         out.append("<item>")
         out += [el("id", it["id"]), el("title", it["title"][:150]),
                 el("description", it["description"]), el("link", it["link"]),
                 el("image_link", it["image"])]
         out += [el("additional_image_link", u) for u in it["more_images"]]
-        out.append(el("availability", availability(cfg, it)))
-        if availability(cfg, it) == "preorder":
+        out.append(el("availability", availability(cfg, it, pre_open)))
+        if availability(cfg, it, pre_open) == "preorder":
             out.append(el("availability_date", cfg["preorder"]["availability_date"]))
         out.append(el("price", fmt_price(it["price"], f["currency"])))
         if it["sale_price"]:

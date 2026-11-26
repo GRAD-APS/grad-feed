@@ -193,6 +193,30 @@ class FeedTest(unittest.TestCase):
         run.feeds[0]["items"][0]["zero_stock"] = True
         self.assertEqual(first_item(other, run.feeds[0]).find(G + "availability").text, "in_stock")
 
+    def test_preorder_follows_the_product_named_in_when(self):
+        pre = {"availability_date": "2026-12-31T08:00+0100", "when": "grad-carafe",
+               "handles": ["grad-carafe", "grad-no-1-carafe"]}
+        carafe = {"handle": "grad-carafe", "available": True, "zero_stock": False}
+        black_set = {"handle": "grad-no-1-carafe", "available": True, "zero_stock": True}
+        cooler = {"handle": "grad-no-1-black-edition", "available": True, "zero_stock": True}
+        cfg = {"preorder": pre}
+        # carafe in stock: a set that reads "sold without stock" (Black cooler) is NOT a pre-order
+        is_open = feed.preorder_open(cfg, [carafe, black_set, cooler])
+        self.assertFalse(is_open)
+        self.assertEqual(feed.availability(cfg, black_set, is_open), "in_stock")
+        # carafe at zero and still sold: carafe and set are, the cooler never is
+        carafe["zero_stock"] = True
+        is_open = feed.preorder_open(cfg, [carafe, black_set, cooler])
+        self.assertTrue(is_open)
+        self.assertEqual(feed.availability(cfg, carafe, is_open), "preorder")
+        self.assertEqual(feed.availability(cfg, black_set, is_open), "preorder")
+        self.assertEqual(feed.availability(cfg, cooler, is_open), "in_stock")
+        # carafe at zero and NOT sold: nothing is a pre-order
+        carafe["available"] = False
+        is_open = feed.preorder_open(cfg, [carafe, black_set, cooler])
+        self.assertEqual(feed.availability(cfg, carafe, is_open), "out_of_stock")
+        self.assertEqual(feed.availability(cfg, black_set, is_open), "in_stock")
+
     def test_availability_follows_shopify(self):
         f = run_for(CFG, {("EUR_101523849554", "en"): ["DK"]}, available=False).feeds[0]
         self.assertFalse(f["items"][0]["available"])

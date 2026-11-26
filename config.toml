@@ -51,14 +51,16 @@ paused = [
 # when out of stock": when it reaches zero, the store's pages switch to
 # "Pre-order | Arrives later in December" by themselves, and so does this feed
 # on its next build (every 6 hours). A listed product is availability
-# "preorder" ONLY while Shopify sells it with none in stock; with stock it is
-# in_stock, and it goes back by itself when a batch is booked in. So this table
-# stays. The coolers are not listed: Black and Steel also sell below zero and
-# are not pre-orders.
+# "preorder" ONLY while the carafe itself (`when`) is sold with none in stock;
+# with stock everything is in_stock, and it goes back by itself when a batch is
+# booked in. So this table stays. The carafe decides for the sets, as on the
+# pages: a set with a Black or Steel cooler always reads as "sold without
+# stock" (those coolers sell below zero), so it cannot decide for itself.
 # availability_date: Google wants a real day and the store only says "later in
 # December", so this is the last day that is still true. If a pre-order is
 # still open when the day comes, move it: Google disapproves a past date.
 [preorder]
+when = "grad-carafe"
 availability_date = "2026-12-31T08:00+0100"
 handles = ["grad-carafe", "grad-no-1-carafe", "grad-no-1-duo-2-carafes", "grad-no-1-ultimate-bundle"]
 
